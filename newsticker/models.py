@@ -55,7 +55,7 @@ class TickerItem(models.Model):
                 href = ref.get_href()
                 if href:
                     sup_tag = soup.new_tag('sup')
-                    a_tag = soup.new_tag('a', attrs={'href': href, 'title': href, 'data-ref-type': ref.ref_type})
+                    a_tag = soup.new_tag('a', attrs={'href': href, 'title': href, 'data-ref-type': ref.ref_type, 'target': '_blank'})
                     a_tag.string = str(ref.pk)
                     sup_tag.append(a_tag)
                     marker_tag.replace_with(sup_tag)
