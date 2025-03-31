@@ -1,3 +1,5 @@
+from collections import OrderedDict
+
 from django.db import models
 from django.utils import timezone
 from treebeard.mp_tree import MP_Node
@@ -33,6 +35,38 @@ class TickerItemType(models.Model):
         return 'Type: {}'.format(self.name)
 
 
+class TickerItemManager(models.Manager):
+    def current(self, limit_days=3, limit_categories_qs=None):
+        #today = timezone.localtime(timezone.now(), timezone=timezone.get_current_timezone()).date()
+        start_day = timezone.localtime(
+            timezone.now() - timezone.timedelta(days=limit_days),
+            timezone=timezone.get_current_timezone()
+        ).date()
+        qs = self.filter(pub_dt__date__gte=start_day)
+        if limit_categories_qs:
+            qs = qs.filter(category__in=limit_categories_qs)
+        qs = qs.order_by('-pub_dt__date', 'category', 'pub_dt')
+        return qs
+
+    def current_by_date(self, qs=None, limit_days=3, limit_categories_qs=None):
+        if qs is None:
+            qs = self.current(limit_days=limit_days, limit_categories_qs=limit_categories_qs)
+
+        by_date = OrderedDict()
+        for ni in qs:
+            d = timezone.localtime(ni.pub_dt, timezone=timezone.get_current_timezone()).date()
+            cat = ni.category
+            if d not in by_date:
+                by_date[d] = OrderedDict()
+
+            if cat not in by_date[d]:
+                by_date[d][cat] = [ni]
+            else:
+                by_date[d][cat].append(ni)
+        return by_date
+
+
+
 class TickerItem(models.Model):
     category = models.ForeignKey(TickerCategory, on_delete=models.CASCADE)
     publication = models.ForeignKey(TickerPublication, on_delete=models.CASCADE)
@@ -41,6 +75,7 @@ class TickerItem(models.Model):
     pub_dt = models.DateTimeField(default=timezone.now)
     headline = models.CharField(max_length=255)
     summary = HTMLField()
+    objects = TickerItemManager()
 
     def get_rendered_summary(self):
         soup = BeautifulSoup(self.summary, 'html.parser')
