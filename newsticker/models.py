@@ -66,7 +66,6 @@ class TickerItemManager(models.Manager):
         return by_date
 
 
-
 class TickerItem(models.Model):
     category = models.ForeignKey(TickerCategory, on_delete=models.CASCADE)
     publication = models.ForeignKey(TickerPublication, on_delete=models.CASCADE)
@@ -74,7 +73,7 @@ class TickerItem(models.Model):
     created_dt = models.DateTimeField(auto_now_add=True)
     pub_dt = models.DateTimeField(default=timezone.now)
     headline = models.CharField(max_length=255)
-    summary = HTMLField()
+    summary = HTMLField(help_text='Cited Work: GRÜNEN | Marker: Referenz')
     objects = TickerItemManager()
 
     def get_rendered_summary(self):
