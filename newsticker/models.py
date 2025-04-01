@@ -45,7 +45,7 @@ class TickerItemManager(models.Manager):
         qs = self.filter(pub_dt__date__gte=start_day)
         if limit_categories_qs:
             qs = qs.filter(category__in=limit_categories_qs)
-        qs = qs.order_by('-pub_dt__date', 'category', 'pub_dt')
+        qs = qs.order_by('-pub_dt__date', 'category__path', 'pub_dt')
         return qs
 
     def current_by_date(self, qs=None, limit_days=3, limit_categories_qs=None):
