@@ -26,6 +26,9 @@ class TickerPublication(models.Model):
     def __str__(self):
         return 'Pub: {}'.format(self.name)
 
+    class Meta:
+        ordering = ['name']
+
 
 class TickerItemType(models.Model):
     name = models.CharField(max_length=60)
@@ -33,6 +36,9 @@ class TickerItemType(models.Model):
 
     def __str__(self):
         return 'Type: {}'.format(self.name)
+
+    class Meta:
+        ordering = ['name']
 
 
 class TickerItemManager(models.Manager):
