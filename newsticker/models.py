@@ -42,21 +42,21 @@ class TickerItemType(models.Model):
 
 
 class TickerItemManager(models.Manager):
-    def current(self, limit_days=3, limit_categories_qs=None):
+    def current(self, ref_date=None, limit_days=3, limit_categories_qs=None):
         #today = timezone.localtime(timezone.now(), timezone=timezone.get_current_timezone()).date()
-        start_day = timezone.localtime(
-            timezone.now() - timezone.timedelta(days=limit_days),
-            timezone=timezone.get_current_timezone()
-        ).date()
-        qs = self.filter(pub_dt__date__gte=start_day)
+        if ref_date is None:
+            ref_date = timezone.now().date()
+        start_calc_date = ref_date - timezone.timedelta(days=limit_days)
+        qs = self.filter(pub_dt__date__range=(start_calc_date, ref_date))
+        #print(f'pub_dt__date__range=("{start_calc_date}", "{ref_date}")')
         if limit_categories_qs:
             qs = qs.filter(category__in=limit_categories_qs)
         qs = qs.order_by('-pub_dt__date', 'category__path', 'pub_dt')
         return qs
 
-    def current_by_date(self, qs=None, limit_days=3, limit_categories_qs=None):
+    def current_by_date(self, qs=None, limit_days=3, limit_categories_qs=None, ref_date=None):
         if qs is None:
-            qs = self.current(limit_days=limit_days, limit_categories_qs=limit_categories_qs)
+            qs = self.current(ref_date=ref_date, limit_days=limit_days, limit_categories_qs=limit_categories_qs)
 
         by_date = OrderedDict()
         for ni in qs:
