@@ -26,7 +26,7 @@ class TickerItemAdmin(admin.ModelAdmin):
     list_display = ['category', 'publication', 'pub_dt', 'headline']
     search_fields = [
         'headline',
-        #'summary'
+        'summary'
     ]
     date_hierarchy = 'pub_dt'
     inlines = [TickerRefInlineAdmin]

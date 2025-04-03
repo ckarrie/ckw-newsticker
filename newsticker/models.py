@@ -16,7 +16,7 @@ class TickerCategory(MP_Node):
     node_order_by = ['name']
 
     def __str__(self):
-        return 'Category: {}'.format(self.name)
+        return self.name
 
 
 class TickerPublication(models.Model):
@@ -24,7 +24,7 @@ class TickerPublication(models.Model):
     url = models.URLField(null=True, blank=True)
 
     def __str__(self):
-        return 'Pub: {}'.format(self.name)
+        return self.name
 
     class Meta:
         ordering = ['name']
@@ -35,7 +35,7 @@ class TickerItemType(models.Model):
     color = models.CharField(max_length=6, null=True, blank=True)
 
     def __str__(self):
-        return 'Type: {}'.format(self.name)
+        return self.name
 
     class Meta:
         ordering = ['name']
@@ -79,7 +79,12 @@ class TickerItem(models.Model):
     created_dt = models.DateTimeField(auto_now_add=True)
     pub_dt = models.DateTimeField(default=timezone.now)
     headline = models.CharField(max_length=255)
-    summary = HTMLField(help_text='Cited Work: GRÜNEN | Marker: Referenz')
+    summary = HTMLField(
+        null=True,
+        blank=True,
+        help_text='Cited Work: GRÜNEN | Marker: Referenz'
+    )
+    has_summary = models.BooleanField(default=True, editable=False)
     objects = TickerItemManager()
 
     def get_rendered_summary(self):
@@ -101,6 +106,14 @@ class TickerItem(models.Model):
                     marker_tag.replace_with(sup_tag)
 
         return str(soup)
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        self.has_summary = False
+        if self.summary:
+            if len(self.summary) > len('<p></p>'):
+                self.has_summary = True
+        super().save(update_fields=('has_summary',))
 
     def __str__(self):
         return self.headline
