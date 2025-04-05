@@ -109,10 +109,11 @@ class TickerItem(models.Model):
                 href = ref.get_href()
                 if href:
                     sup_tag = soup.new_tag('sup')
-                    ref_title = f'{ref.get_ref_type_display()} ({href})'
-                    if ref.ref_type == 'tickeritem' and ref.linked_tickeritem:
-                        ref_title = f'Ticker Item: {ref.linked_tickeritem}, vom {ref.linked_tickeritem.pub_dt.strftime("%Y-%m-%d")}'
-                    a_tag = soup.new_tag('a', attrs={'href': href, 'title': ref_title, 'data-ref-type': ref.ref_type, 'target': '_blank'})
+                    ref_title = ref.get_ref_title()
+                    target = ''
+                    if not ref.get_is_local():
+                        target = '_blank'
+                    a_tag = soup.new_tag('a', attrs={'href': href, 'title': ref_title, 'data-ref-type': ref.ref_type, 'target': target})
                     a_tag.string = str(ref.pk) + " "
                     fa_icon_tag = soup.new_tag('i', attrs={'class': ref_type_icon[ref.ref_type]})
                     a_tag.append(fa_icon_tag)
@@ -130,7 +131,11 @@ class TickerItem(models.Model):
         super().save(update_fields=('has_summary',))
 
     def get_absolute_url(self):
-        return reverse('gruene_cms_news:newsticker_index') + f'?date={self.pub_dt.strftime("%Y-%m-%d")}&days=0&collapse_cat={self.category.pk}'
+        # Todo: add single page
+        return self.get_overview_url()
+
+    def get_overview_url(self):
+        return reverse('gruene_cms_news:newsticker_index') + f'?date={self.pub_dt.strftime("%Y-%m-%d")}&days=0&collapse_cat={self.category.pk}#ti-{self.pk}'
 
     def __str__(self):
         return self.headline
@@ -149,6 +154,50 @@ class TickerRef(models.Model):
     url = models.URLField(null=True, blank=True)
     uploadfile = models.FileField(upload_to=tickerref_file_upload, null=True, blank=True)
     linked_tickeritem = models.ForeignKey(TickerItem, on_delete=models.SET_NULL, null=True, blank=True, related_name='linked_tickerref_set')
+
+    def get_is_local(self):
+        if self.url:
+            if self.url.startswith('http'):
+                return False
+            return True
+        if self.uploadfile:
+            return True
+        if self.linked_tickeritem:
+            return True
+        return False
+
+    def get_ref_title(self):
+        if self.url:
+            if self.ref_type == 'website':
+                if self.url.startswith('http'):
+                    return f'Externer Link'
+                return 'Interner Link'
+            if self.ref_type == 'pdf':
+                if self.url.startswith('http'):
+                    return f'Externes PDF'
+                return f'Internes PDF'
+            if self.ref_type == 'video':
+                if 'youtube' in self.url:
+                    return 'YouTube-Video'
+                return 'Video-Link'
+            if self.ref_type == 'image':
+                if self.url.startswith('http'):
+                    return f'Externes Bild'
+                return f'Internes Bild'
+
+        if self.uploadfile:
+            if self.ref_type == 'website':
+                return 'Interner Link'
+            if self.ref_type == 'pdf':
+                return f'Internes PDF'
+            if self.ref_type == 'video':
+                return f'Internes Video'
+            if self.ref_type == 'image':
+                return f'Internes Bild'
+
+        if self.linked_tickeritem:
+            dp = f'News Ticker: {self.linked_tickeritem.headline}, vom {self.linked_tickeritem.pub_dt.strftime("%Y-%m-%d")}'
+        return dp
 
     def get_href(self):
         if self.uploadfile:
