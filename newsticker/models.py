@@ -91,6 +91,13 @@ class TickerItem(models.Model):
         soup = BeautifulSoup(self.summary, 'html.parser')
         marker_tags = soup.find_all("span", {'class': "marker"})
         tickerrefs = list(self.tickerref_set.all())
+        ref_type_icon = {
+            'website': 'fa fa-globe',
+            'pdf': 'fa fa-file-pdf',
+            'video': 'fa fa-video',
+            'image': 'fa fa-image',
+        }
+
         for i, marker_tag in enumerate(marker_tags):
             try:
                 ref = tickerrefs[i]
@@ -101,7 +108,9 @@ class TickerItem(models.Model):
                 if href:
                     sup_tag = soup.new_tag('sup')
                     a_tag = soup.new_tag('a', attrs={'href': href, 'title': href, 'data-ref-type': ref.ref_type, 'target': '_blank'})
-                    a_tag.string = str(ref.pk)
+                    a_tag.string = str(ref.pk) + " "
+                    fa_icon_tag = soup.new_tag('i', attrs={'class': ref_type_icon[ref.ref_type]})
+                    a_tag.append(fa_icon_tag)
                     sup_tag.append(a_tag)
                     marker_tag.replace_with(sup_tag)
 
