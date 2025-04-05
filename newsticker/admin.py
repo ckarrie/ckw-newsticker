@@ -7,6 +7,8 @@ from treebeard.forms import movenodeform_factory
 
 class TickerRefInlineAdmin(admin.TabularInline):
     model = models.TickerRef
+    fk_name = 'item'
+    autocomplete_fields = ['linked_tickeritem']
 
 
 class TickerCategoryAdmin(TreeAdmin):

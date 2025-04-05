@@ -1,6 +1,7 @@
 from collections import OrderedDict
 
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 from treebeard.mp_tree import MP_Node
 from djangocms_text_ckeditor.fields import HTMLField
@@ -96,6 +97,7 @@ class TickerItem(models.Model):
             'pdf': 'fa fa-file-pdf',
             'video': 'fa fa-video',
             'image': 'fa fa-image',
+            'tickeritem': 'fa fa-link'
         }
 
         for i, marker_tag in enumerate(marker_tags):
@@ -107,7 +109,10 @@ class TickerItem(models.Model):
                 href = ref.get_href()
                 if href:
                     sup_tag = soup.new_tag('sup')
-                    a_tag = soup.new_tag('a', attrs={'href': href, 'title': href, 'data-ref-type': ref.ref_type, 'target': '_blank'})
+                    ref_title = f'{ref.get_ref_type_display()} ({href})'
+                    if ref.ref_type == 'tickeritem' and ref.linked_tickeritem:
+                        ref_title = f'Ticker Item: {ref.linked_tickeritem}, vom {ref.linked_tickeritem.pub_dt.strftime("%Y-%m-%d")}'
+                    a_tag = soup.new_tag('a', attrs={'href': href, 'title': ref_title, 'data-ref-type': ref.ref_type, 'target': '_blank'})
                     a_tag.string = str(ref.pk) + " "
                     fa_icon_tag = soup.new_tag('i', attrs={'class': ref_type_icon[ref.ref_type]})
                     a_tag.append(fa_icon_tag)
@@ -124,27 +129,34 @@ class TickerItem(models.Model):
                 self.has_summary = True
         super().save(update_fields=('has_summary',))
 
+    def get_absolute_url(self):
+        return reverse('gruene_cms_news:newsticker_index') + f'?date={self.pub_dt.strftime("%Y-%m-%d")}&days=0&collapse_cat={self.category.pk}'
+
     def __str__(self):
         return self.headline
 
 
 class TickerRef(models.Model):
-    item = models.ForeignKey(TickerItem, on_delete=models.CASCADE)
+    item = models.ForeignKey(TickerItem, on_delete=models.CASCADE, related_name='tickerref_set')
     ref_type = models.CharField(max_length=30, choices=(
         ('website', 'Website'),
         ('pdf', 'PDF'),
         ('video', 'Video'),
         ('image', 'Image'),
+        ('tickeritem', 'Ticker Item'),
     ))
     index = models.IntegerField(default=0)
     url = models.URLField(null=True, blank=True)
     uploadfile = models.FileField(upload_to=tickerref_file_upload, null=True, blank=True)
+    linked_tickeritem = models.ForeignKey(TickerItem, on_delete=models.SET_NULL, null=True, blank=True, related_name='linked_tickerref_set')
 
     def get_href(self):
-        if self.url:
-            return self.url
         if self.uploadfile:
             return self.uploadfile.url
+        if self.url:
+            return self.url
+        if self.linked_tickeritem:
+            return self.linked_tickeritem.get_absolute_url()
         return None
 
     class Meta:
