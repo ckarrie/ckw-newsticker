@@ -167,6 +167,7 @@ class TickerRef(models.Model):
         return False
 
     def get_ref_title(self):
+        dp = "MISSING FILE/URL/LINKED TICKERITEM"
         if self.url:
             if self.ref_type == 'website':
                 if self.url.startswith('http'):
