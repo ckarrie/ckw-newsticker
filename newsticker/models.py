@@ -73,6 +73,14 @@ class TickerItemManager(models.Manager):
         return by_date
 
 
+class TickerRefManager(models.Manager):
+    def in_summary(self):
+        return self.filter(is_in_summary=True)
+
+    def not_in_summary(self):
+        return self.filter(is_in_summary=False)
+
+
 class TickerItem(models.Model):
     category = models.ForeignKey(TickerCategory, on_delete=models.CASCADE)
     publication = models.ForeignKey(TickerPublication, on_delete=models.CASCADE)
@@ -86,6 +94,7 @@ class TickerItem(models.Model):
         help_text='Cited Work: GRÜNEN | Marker: Referenz'
     )
     has_summary = models.BooleanField(default=True, editable=False)
+    refs_in_summary_count = models.IntegerField(default=0, editable=False)
     objects = TickerItemManager()
 
     def get_rendered_summary(self):
@@ -100,12 +109,15 @@ class TickerItem(models.Model):
             'tickeritem': 'fa fa-link'
         }
 
+        ref_replaced_in_summary = []
+
         for i, marker_tag in enumerate(marker_tags):
             try:
                 ref = tickerrefs[i]
             except IndexError:
                 ref = None
             if ref:
+
                 href = ref.get_href()
                 if href:
                     sup_tag = soup.new_tag('sup')
@@ -119,6 +131,14 @@ class TickerItem(models.Model):
                     a_tag.append(fa_icon_tag)
                     sup_tag.append(a_tag)
                     marker_tag.replace_with(sup_tag)
+                    ref_replaced_in_summary.append(ref)
+
+        # Update Ref stats
+        for ref in tickerrefs:
+            ref.is_in_summary = ref in ref_replaced_in_summary
+            ref.save(update_fields=('is_in_summary',))
+        self.refs_in_summary_count = len(ref_replaced_in_summary)
+        self.save(update_fields=('refs_in_summary_count',))
 
         return str(soup)
 
@@ -154,6 +174,8 @@ class TickerRef(models.Model):
     url = models.URLField(null=True, blank=True)
     uploadfile = models.FileField(upload_to=tickerref_file_upload, null=True, blank=True)
     linked_tickeritem = models.ForeignKey(TickerItem, on_delete=models.SET_NULL, null=True, blank=True, related_name='linked_tickerref_set')
+    is_in_summary = models.BooleanField(default=False, editable=False)
+    objects = TickerRefManager()
 
     def get_is_local(self):
         if self.url:

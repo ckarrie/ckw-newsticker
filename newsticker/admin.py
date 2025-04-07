@@ -25,7 +25,7 @@ class TickerItemTypeAdmin(admin.ModelAdmin):
 
 
 class TickerItemAdmin(admin.ModelAdmin):
-    list_display = ['category', 'publication', 'pub_dt', 'headline']
+    list_display = ['category', 'publication', 'pub_dt', 'headline', 'refs_in_summary_count']
     search_fields = [
         'headline',
         'summary'
@@ -35,7 +35,8 @@ class TickerItemAdmin(admin.ModelAdmin):
 
 
 class TickerRefAdmin(admin.ModelAdmin):
-    list_display = ['item', 'ref_type', 'index', 'url', 'uploadfile']
+    list_display = ['item', 'is_in_summary', 'ref_type', 'index', 'url', 'uploadfile',]
+    list_filter = ['is_in_summary', 'ref_type']
 
 
 admin.site.register(models.TickerCategory, TickerCategoryAdmin)
