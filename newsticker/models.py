@@ -102,11 +102,11 @@ class TickerItem(models.Model):
         marker_tags = soup.find_all("span", {'class': "marker"})
         tickerrefs = list(self.tickerref_set.all())
         ref_type_icon = {
-            'website': 'fa fa-globe',
-            'pdf': 'fa fa-file-pdf',
-            'video': 'fa fa-video',
-            'image': 'fa fa-image',
-            'tickeritem': 'fa fa-link'
+            'website': 'fa ms-1 fa-globe',
+            'pdf': 'fa ms-1 fa-file-pdf',
+            'video': 'fa ms-1 fa-video',
+            'image': 'fa ms-1 fa-image',
+            'tickeritem': 'fa ms-1 fa-link'
         }
 
         ref_replaced_in_summary = []
@@ -121,24 +121,40 @@ class TickerItem(models.Model):
                 ref_text = ref.text
                 ref_title = ref.title
                 if href:
-                    sup_tag = soup.new_tag('sup')
                     ref_title = ref.get_ref_title()
                     target = ''
                     if not ref.get_is_local():
                         target = '_blank'
+                    # create Tags
                     a_tag = soup.new_tag('a', attrs={'href': href, 'title': ref_title, 'data-ref-type': ref.ref_type, 'target': target})
-                    a_tag.string = str(ref.pk) + " "
+                    sup_tag = soup.new_tag('sup', attrs={'class': 'ms-1'})
                     fa_icon_tag = soup.new_tag('i', attrs={'class': ref_type_icon[ref.ref_type]})
-                    a_tag.append(fa_icon_tag)
-                    sup_tag.append(a_tag)
-                    marker_tag.replace_with(sup_tag)
+
+                    if '^' in marker_tag.string:
+                        a_tag.string = ''
+                    else:
+                        a_tag.string = marker_tag.string
+                    # sup-Tag ID
+                    sup_tag.string = str(ref.pk) + ""
+                    # i-Tag
+                    sup_tag.append(fa_icon_tag)
+                    a_tag.append(sup_tag)
+
+                    marker_tag.replace_with(a_tag)
                     ref_replaced_in_summary.append(ref)
-                if ref_text and ref_title and ref.ref_type == 'abbreviation':
+
+                if ref_text and ref.ref_type == 'abbreviation':
                     abbr_tag = soup.new_tag('abbr', attrs={
                         'title': ref_text,
                         #'class': 'initialism'
                     })
-                    abbr_tag.string = ref_title
+                    if ref_title:
+                        abbr_tag.string = ref_title
+                    else:
+                        abbr_tag.string = marker_tag.string
+                    hidden_tag = soup.new_tag('span', attrs={'class': 'd-none hidden-abbr'})
+                    hidden_tag.string = f' ({ref_text})'
+                    abbr_tag.append(hidden_tag)
                     marker_tag.replace_with(abbr_tag)
                     ref_replaced_in_summary.append(ref)
 
