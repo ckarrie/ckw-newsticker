@@ -117,8 +117,9 @@ class TickerItem(models.Model):
             except IndexError:
                 ref = None
             if ref:
-
                 href = ref.get_href()
+                ref_text = ref.text
+                ref_title = ref.title
                 if href:
                     sup_tag = soup.new_tag('sup')
                     ref_title = ref.get_ref_title()
@@ -131,6 +132,14 @@ class TickerItem(models.Model):
                     a_tag.append(fa_icon_tag)
                     sup_tag.append(a_tag)
                     marker_tag.replace_with(sup_tag)
+                    ref_replaced_in_summary.append(ref)
+                if ref_text and ref_title and ref.ref_type == 'abbreviation':
+                    abbr_tag = soup.new_tag('abbr', attrs={
+                        'title': ref_text,
+                        #'class': 'initialism'
+                    })
+                    abbr_tag.string = ref_title
+                    marker_tag.replace_with(abbr_tag)
                     ref_replaced_in_summary.append(ref)
 
         # Update Ref stats
@@ -169,11 +178,16 @@ class TickerRef(models.Model):
         ('video', 'Video'),
         ('image', 'Image'),
         ('tickeritem', 'Ticker Item'),
+        ('abbreviation', 'Abbreviation'),
     ))
     index = models.IntegerField(default=0)
     url = models.URLField(null=True, blank=True)
     uploadfile = models.FileField(upload_to=tickerref_file_upload, null=True, blank=True)
     linked_tickeritem = models.ForeignKey(TickerItem, on_delete=models.SET_NULL, null=True, blank=True, related_name='linked_tickerref_set')
+
+    title = models.CharField(max_length=255, null=True, blank=True)
+    text = models.CharField(max_length=255, null=True, blank=True)
+
     is_in_summary = models.BooleanField(default=False, editable=False)
     objects = TickerRefManager()
 
@@ -186,10 +200,14 @@ class TickerRef(models.Model):
             return True
         if self.linked_tickeritem:
             return True
+        if self.text and self.ref_type == 'abbreviation':
+            return True
         return False
 
     def get_ref_title(self):
         dp = "MISSING FILE/URL/LINKED TICKERITEM"
+        if self.title:
+            return self.title
         if self.url:
             if self.ref_type == 'website':
                 if self.url.startswith('http'):
@@ -220,6 +238,7 @@ class TickerRef(models.Model):
 
         if self.linked_tickeritem:
             dp = f'News Ticker: {self.linked_tickeritem.headline}, vom {self.linked_tickeritem.pub_dt.strftime("%Y-%m-%d")}'
+
         return dp
 
     def get_href(self):
