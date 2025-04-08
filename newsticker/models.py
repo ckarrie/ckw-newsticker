@@ -91,7 +91,7 @@ class TickerItem(models.Model):
     summary = HTMLField(
         null=True,
         blank=True,
-        help_text='Cited Work: GRÜNEN | Marker: Referenz'
+        help_text='Cited Work: GRÜNEN | Marker: Referenz | Variable: Mehr +/-'
     )
     has_summary = models.BooleanField(default=True, editable=False)
     refs_in_summary_count = models.IntegerField(default=0, editable=False)
