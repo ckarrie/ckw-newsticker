@@ -127,7 +127,7 @@ class TickerItem(models.Model):
                         target = '_blank'
                     # create Tags
                     a_tag = soup.new_tag('a', attrs={'href': href, 'title': ref_title, 'data-ref-type': ref.ref_type, 'target': target})
-                    sup_tag = soup.new_tag('sup', attrs={'class': 'ms-1'})
+                    sup_tag = soup.new_tag('sup', attrs={'class': 'mx-1'})
                     fa_icon_tag = soup.new_tag('i', attrs={'class': ref_type_icon[ref.ref_type]})
 
                     if '^' in marker_tag.string:
@@ -135,7 +135,8 @@ class TickerItem(models.Model):
                     else:
                         a_tag.string = marker_tag.string
                     # sup-Tag ID
-                    sup_tag.string = str(ref.pk) + ""
+                    #sup_tag.string = str(ref.pk) + ""
+                    sup_tag.string = ""
                     # i-Tag
                     sup_tag.append(fa_icon_tag)
                     a_tag.append(sup_tag)
