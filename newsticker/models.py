@@ -1,4 +1,5 @@
 from collections import OrderedDict
+from urllib.parse import urlencode
 
 from django.db import models
 from django.urls import reverse
@@ -180,8 +181,18 @@ class TickerItem(models.Model):
         # Todo: add single page
         return self.get_overview_url()
 
-    def get_overview_url(self):
-        return reverse('gruene_cms_news:newsticker_index') + f'?date={self.pub_dt.strftime("%Y-%m-%d")}&days=0&collapse_cat={self.category.pk}#ti-{self.pk}'
+    def get_overview_url(self, collape_cat=False):
+        params = {
+            'date': self.pub_dt.strftime("%Y-%m-%d"),
+            'days': '0',
+            'show_all': 'on'
+        }
+        if collape_cat:
+            params['collapse_cat'] = str(self.category.pk)
+
+        get_params = urlencode(params)
+
+        return reverse('gruene_cms_news:newsticker_index') + f'?{get_params}#ti-{self.pk}'
 
     def __str__(self):
         return self.headline
@@ -204,6 +215,7 @@ class TickerRef(models.Model):
 
     title = models.CharField(max_length=255, null=True, blank=True)
     text = models.CharField(max_length=255, null=True, blank=True)
+    #internal = models.BooleanField(default=False)
 
     is_in_summary = models.BooleanField(default=False, editable=False)
     objects = TickerRefManager()
