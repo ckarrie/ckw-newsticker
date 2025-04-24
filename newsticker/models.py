@@ -2,11 +2,14 @@ from collections import OrderedDict
 from urllib.parse import urlencode
 
 from django.db import models
-from django.urls import reverse
+from django.urls import reverse, resolve
 from django.utils import timezone
 from treebeard.mp_tree import MP_Node
 from djangocms_text_ckeditor.fields import HTMLField
+
 from bs4 import BeautifulSoup
+import string
+import random
 
 
 def tickerref_file_upload(instance, filename):
@@ -282,6 +285,65 @@ class TickerRef(models.Model):
     class Meta:
         ordering = ['item', 'index']
 
+
+class ShareLink(models.Model):
+    short = models.CharField(max_length=5, editable=False)
+    valid_until = models.DateTimeField()
+    shared_with_notes = models.CharField(max_length=255, null=True, blank=True)
+
+    # maybe later: limit to tickeritems
+    #display_tickeritems = models.ManyToManyField(TickerItem, null=True)
+    display_date = models.DateField()
+    display_days = models.IntegerField(default=0)
+
+    clicks_log = models.TextField(null=True, blank=True)
+    clicks_counter = models.IntegerField(default=0)
+
+    @staticmethod
+    def generate_short_id(size):
+        return ''.join(random.choices(string.ascii_uppercase + string.ascii_lowercase + string.digits, k=size))
+
+    def get_default_short_size(self):
+        return self._meta.get_field('short').max_length
+
+    def save(self, *args, **kwargs):
+        if not self.short:
+            size = self.get_default_short_size()
+            short = self.generate_short_id(size=size)
+            if ShareLink.objects.filter(short=short).exists():
+                return self.save(*args, **kwargs)
+            self.short = short
+        return super(ShareLink, self).save(*args, **kwargs)
+
+    def is_valid(self):
+        return self.valid_until >= timezone.now()
+
+    def add_request(self, request):
+        local_dt = timezone.localtime(timezone.now(), timezone=timezone.get_current_timezone())
+        dt_str = local_dt.strftime("%Y-%m-%d;%H:%M:%S")
+        user_agent = request.headers["user-agent"]
+        content_params = request.content_params
+        user_name = request.user.get_username()
+        log_line = f'{dt_str};{user_name};{user_agent};{content_params}\n'
+        logs = self.clicks_log or ''
+        logs += log_line
+        self.clicks_log = logs
+        self.clicks_counter += 1
+        self.save(update_fields=['clicks_log', 'clicks_counter'])
+
+    def resolve_url(self, view_name='gruene_cms_news:newsticker_index'):
+        base_url = reverse(view_name)
+        params = {
+            'date': self.display_date.strftime("%Y-%m-%d"),
+            'days': str(self.display_days),
+            'show_all': 'on',
+            's': self.short
+        }
+        get_params = urlencode(params)
+        return base_url + f'?{get_params}'
+
+    def get_short_link_url(self, view_name='gruene_cms_news:newsticker_share'):
+        return reverse(view_name, kwargs={'short': self.short})
 
 
 
