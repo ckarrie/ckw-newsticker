@@ -59,12 +59,13 @@ class TickerItemManager(models.Manager):
         qs = qs.order_by('-pub_dt__date', 'category__path', 'pub_dt')
         return qs
 
-    def current_by_date(self, qs=None, limit_days=3, limit_categories_qs=None, ref_date=None):
+    def current_by_date(self, qs=None, limit_days=3, limit_categories_qs=None, ref_date=None, short_link=None):
         if qs is None:
             qs = self.current(ref_date=ref_date, limit_days=limit_days, limit_categories_qs=limit_categories_qs)
 
         by_date = OrderedDict()
         for ni in qs:
+            ni.short_link = short_link
             d = timezone.localtime(ni.pub_dt, timezone=timezone.get_current_timezone()).date()
             cat = ni.category
             if d not in by_date:
@@ -86,6 +87,8 @@ class TickerRefManager(models.Manager):
 
 
 class TickerItem(models.Model):
+    short_link = None
+
     category = models.ForeignKey(TickerCategory, on_delete=models.CASCADE)
     publication = models.ForeignKey(TickerPublication, on_delete=models.CASCADE)
     item_type = models.ForeignKey(TickerItemType, on_delete=models.CASCADE)
@@ -121,7 +124,7 @@ class TickerItem(models.Model):
             except IndexError:
                 ref = None
             if ref:
-                href = ref.get_href()
+                href = ref.get_href(short_link=self.short_link)
                 ref_text = ref.text
                 ref_title = ref.title
                 if href:
@@ -180,16 +183,20 @@ class TickerItem(models.Model):
                 self.has_summary = True
         super().save(update_fields=('has_summary',))
 
-    def get_absolute_url(self):
+    def get_absolute_url(self, short_link=None):
         # Todo: add single page
-        return self.get_overview_url()
+        return self.get_overview_url(short_link=short_link)
 
-    def get_overview_url(self, collape_cat=False):
+    def get_overview_url(self, collape_cat=False, short_link=None):
         params = {
             'date': self.pub_dt.strftime("%Y-%m-%d"),
             'days': '0',
             'show_all': 'on'
         }
+        if self.short_link:
+            params['s'] = self.short_link.short
+        if short_link:
+            params['s'] = short_link.short
         if collape_cat:
             params['collapse_cat'] = str(self.category.pk)
 
@@ -198,7 +205,8 @@ class TickerItem(models.Model):
         return reverse('gruene_cms_news:newsticker_index') + f'?{get_params}#ti-{self.pk}'
 
     def __str__(self):
-        return self.headline
+        date_str = self.pub_dt.strftime("%Y-%m-%d")
+        return f'{date_str} {self.headline}'
 
 
 class TickerRef(models.Model):
@@ -273,13 +281,13 @@ class TickerRef(models.Model):
 
         return dp
 
-    def get_href(self):
+    def get_href(self, short_link=None):
         if self.uploadfile:
             return self.uploadfile.url
         if self.url:
             return self.url
         if self.linked_tickeritem:
-            return self.linked_tickeritem.get_absolute_url()
+            return self.linked_tickeritem.get_absolute_url(short_link=short_link)
         return None
 
     class Meta:
@@ -345,5 +353,7 @@ class ShareLink(models.Model):
     def get_short_link_url(self, view_name='gruene_cms_news:newsticker_share'):
         return reverse(view_name, kwargs={'short': self.short})
 
+    def __str__(self):
+        return self.short
 
 
